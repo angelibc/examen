@@ -6,5 +6,7 @@ Route.group(() => {
     Route.get('/:id', 'ClientesController.show');
     Route.put('/:id', 'ClientesController.update');
     Route.delete('/:id', 'ClientesController.destroy');
+    Route.post('/enviarCodigoPorSMS/:id', 'ClientesController.enviarCodigoPorSMS');
+
 
 }).prefix('/api/clientes')

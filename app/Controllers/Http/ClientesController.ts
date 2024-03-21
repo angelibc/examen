@@ -52,7 +52,8 @@
 
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext';
 import Cliente from 'App/Models/Cliente';
-
+import Env from '@ioc:Adonis/Core/Env';
+import { Twilio } from 'twilio'
 
 export default class ClientesController {
   /**
@@ -598,8 +599,102 @@ export default class ClientesController {
       });
     }
   }
+/**
+ * @swagger
+ * /api/clientes/enviarCodigoPorSMS/{id}:
+ *   post:
+ *     summary: Enviar un código de verificación por SMS a un cliente.
+ *     description: |
+ *       Este endpoint envía un código de verificación por SMS al cliente identificado por su ID.
+ *       El código se genera aleatoriamente y se envía al número de teléfono asociado al cliente.
+ *     tags:
+ *       - Clientes
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID del cliente al que se enviará el código de verificación.
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Código de verificación enviado exitosamente.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 type:
+ *                   type: string
+ *                   example: success
+ *                   description: El tipo de respuesta.
+ *                 title:
+ *                   type: string
+ *                   example: Código enviado por SMS
+ *                   description: El título de la respuesta.
+ *                 message:
+ *                   type: string
+ *                   example: Se ha enviado el código de verificación por SMS
+ *                   description: El mensaje descriptivo.
+ *                 codigo:
+ *                   type: string
+ *                   example: "123456"
+ *                   description: El código de verificación generado.
+ *       500:
+ *         description: Error al enviar el código por SMS.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 type:
+ *                   type: string
+ *                   example: error
+ *                   description: El tipo de respuesta.
+ *                 title:
+ *                   type: string
+ *                   example: Error al enviar el código por SMS
+ *                   description: El título del error.
+ *                 message:
+ *                   type: string
+ *                   example: Ha ocurrido un error al intentar enviar el código por SMS
+ *                   description: El mensaje descriptivo del error.
+ *                 error:
+ *                   type: string
+ *                   example: Descripción del error
+ *                   description: Detalles adicionales del error.
+ */
 
-     
+public async enviarCodigoPorSMS({ params, response }: HttpContextContract) {
+  try {
+    const cliente = await Cliente.findOrFail(params.id);
+
+    const codigo = Math.floor(100000 + Math.random() * 900000).toString();
+
+    cliente.codigo = codigo;
+    await cliente.save();
+
+    const client = new Twilio(Env.get('TWILIO_ACCOUNT_SID'), Env.get('TWILIO_AUTH_TOKEN'));
+    await client.messages.create({
+      body: `Tu código de verificación es: ${codigo}`,
+      from: Env.get('TWILIO_FROM_NUMBER'),
+      to: `+521${cliente.telefono}`
+    });
+
+    return response.status(200).json({
+      type: 'success',
+      title: 'Código enviado por SMS',
+      message: 'Se ha enviado el código de verificación por SMS'
+    });
+  } catch (error) {
+    return response.status(500).json({
+      type: 'error',
+      title: 'Error al enviar el código por SMS',
+      message: 'Ha ocurrido un error al intentar enviar el código por SMS',
+      error: error.message
+    });
+  }
+}
      
 
   }

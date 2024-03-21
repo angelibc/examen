@@ -40,6 +40,8 @@
 import type { HttpContextContract } from '@ioc:Adonis/Core/HttpContext'
 import Cotizacion from 'App/Models/Cotizacion';
 import Viaje from 'App/Models/Viaje';
+import Cliente from 'App/Models/Cliente';
+
 
 
 
@@ -350,7 +352,7 @@ export default class CotizacionesController {
       })
     }
   }
-  /**
+/**
  * @swagger
  * /api/cotizaciones/{id}:
  *   put:
@@ -363,6 +365,10 @@ export default class CotizacionesController {
  *         name: id
  *         required: true
  *         description: The ID of the cotizacion to update.
+ *       - in: query
+ *         name: codigoVerificacion
+ *         required: true
+ *         description: The verification code sent via SMS
  *         schema:
  *           type: integer
  *     produces:
@@ -408,16 +414,19 @@ export default class CotizacionesController {
  *       '404':
  *         description: Cotizacion not found
  */
+
   public async update({ request, response, params }: HttpContextContract) {
     try {
-      // Obtener la cotización a actualizar
       const updateCot = await Cotizacion.query()
         .whereNotNull('id')
         .whereNull('deleted_at')
         .where('id', params.id)
         .firstOrFail()
 
-      // Obtener la información del viaje asociado a la cotización
+      // Verificar el código de verificación
+      const codigoIngresado = request.input('codigoVerificacion')
+      const cliente = await Cliente.findOrFail(updateCot.id)
+
       const viajeInfo = await Viaje.find(request.input('viaje'))
 
       if (viajeInfo) {
@@ -431,31 +440,36 @@ export default class CotizacionesController {
         const precioBase = viajeInfo.precio;
         const precioTotal = precioBase + (precioBase * incremento);
 
-        // Actualizar los datos de la cotización
+      if (codigoIngresado === cliente.codigo) {
         updateCot.cliente = request.input('cliente');
         updateCot.viaje = request.input('viaje');
         updateCot.precio_total = precioTotal;
-        await updateCot.save();
 
+        await updateCot.save();
         return response.status(200).json({
-          type: "success",
-          title: "Actualizado exitosamente",
-          message: "El recurso ha sido actualizado",
+          type: 'success',
+          title: 'Actualizado exitosamente',
+          message: 'El recurso ha sido actualizado',
           data: updateCot
-        });
+        })
       } else {
-        return response.status(404).json({ error: 'Viaje no encontrado' });
+        return response.status(400).json({
+          type: 'error',
+          title: 'Error de verificación',
+          message: 'El código de verificación es incorrecto'
+        })
       }
-    } catch (error) {
-      return response.status(500).json({
-        type: 'error',
-        title: 'Error al actualizar la cotización',
-        message: 'Ha ocurrido un error al intentar actualizar la cotización',
-        error: error.message,
-      });
-    }
+    } 
+  }catch (error) {
+    return response.status(500).json({
+      type: 'error',
+      title: 'Error al actualizar la cotización',
+      message: 'Ha ocurrido un error al intentar actualizar la cotización',
+      error: error.message
+    })
   }
-  /**
+  }
+/**
  * @swagger
  * /api/cotizacionez/{id}:
  *   delete:
@@ -470,6 +484,12 @@ export default class CotizacionesController {
  *         description: The ID of the cotizacion to delete.
  *         schema:
  *           type: integer
+ *       - in: query
+ *         name: codigoVerificacion
+ *         required: true
+ *         description: The verification code sent via SMS
+ *         schema:
+ *           type: string
  *     responses:
  *       '200':
  *         description: Resource deleted successfully
@@ -502,24 +522,36 @@ export default class CotizacionesController {
  *                 data:
  *                   type: null
  */
-  public async destroy({ params, response }: HttpContextContract) {
-    const cotizacionDelete = await Cotizacion.query().whereNotNull('id').where('id', params.id).first();
 
-    if (cotizacionDelete) {
-      cotizacionDelete.delete();
-      response.status(200).json({
-        type: "success",
-        title: "resource deteled",
-        message: "the resource was deteled",
-        data: null
-      });
-    } else {
-      response.status(404).json({
-        type: "error",
-        title: "resource not found",
-        message: "The resource was not found",
-        data: null
-      });
+  public async destroy({ params, request, response }: HttpContextContract) {
+    try {
+      const cotizacion = await Cotizacion.findOrFail(params.id)
+
+      const codigoIngresado = request.input('codigoVerificacion')
+      const cliente = await Cliente.findOrFail(cotizacion.id)
+
+      if (codigoIngresado === cliente.codigo) {
+        await cotizacion.delete()
+        return response.status(200).json({
+          type: 'success',
+          title: 'Recurso eliminado exitosamente',
+          message: 'La cotización ha sido eliminada',
+          data: null
+        })
+      } else {
+        return response.status(400).json({
+          type: 'error',
+          title: 'Error de verificación',
+          message: 'El código de verificación es incorrecto'
+        })
+      }
+    } catch (error) {
+      return response.status(500).json({
+        type: 'error',
+        title: 'Error al eliminar la cotización',
+        message: 'Ha ocurrido un error al intentar eliminar la cotización',
+        error: error.message
+      })
     }
   }
 }
