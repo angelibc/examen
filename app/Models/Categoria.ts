@@ -4,6 +4,8 @@ import { compose } from '@ioc:Adonis/Core/Helpers'
 import { SoftDeletes } from '@ioc:Adonis/Addons/LucidSoftDeletes'
 
 export default class Categoria extends compose(BaseModel, SoftDeletes) {
+  public static table = 'categorias'
+
   @column({ isPrimary: true })
   public id: number
 

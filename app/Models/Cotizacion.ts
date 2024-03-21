@@ -3,8 +3,12 @@ import { BaseModel, column, BelongsTo, belongsTo } from '@ioc:Adonis/Lucid/Orm'
 import Cliente from './Cliente'
 import Viaje from './Viaje'
 import Categoria from './Categoria'
+import { compose } from '@ioc:Adonis/Core/Helpers'
+import { SoftDeletes } from '@ioc:Adonis/Addons/LucidSoftDeletes'
 
-export default class Cotizacion extends BaseModel {
+export default class Cotizacion extends compose(BaseModel, SoftDeletes) {
+  public static table = 'cotizaciones'
+
   @column({ isPrimary: true })
   public id: number
 

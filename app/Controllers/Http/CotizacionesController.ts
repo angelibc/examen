@@ -408,47 +408,51 @@ export default class CotizacionesController {
  *       '404':
  *         description: Cotizacion not found
  */
-  public async update({ response, request, params }: HttpContextContract) {
-    const body = request.all();
-  
-    // Obtener la cotización a actualizar
-    const updateCot = await Cotizacion.query()
-      .whereNotNull('id')
-      .whereNull('deleted_at')
-      .where('id', params.id)
-      .first();
-  
-    if (updateCot) {
+  public async update({ request, response, params }: HttpContextContract) {
+    try {
+      // Obtener la cotización a actualizar
+      const updateCot = await Cotizacion.query()
+        .whereNotNull('id')
+        .whereNull('deleted_at')
+        .where('id', params.id)
+        .firstOrFail()
+
       // Obtener la información del viaje asociado a la cotización
-      const viajeInfo = await Viaje.find(body['viaje']);
-  
+      const viajeInfo = await Viaje.find(request.input('viaje'))
+
       if (viajeInfo) {
         let incremento = 0;
-        if (viajeInfo.categoria === 2) {
+        if (updateCot.categoria === 2) {
           incremento = 0.10;
-        } else if (viajeInfo.categoria === 3) {
+        } else if (updateCot.categoria === 3) {
           incremento = 0.20;
         }
-  
+
         const precioBase = viajeInfo.precio;
         const precioTotal = precioBase + (precioBase * incremento);
-  
-        updateCot.cliente = body['cliente'];
-        updateCot.viaje = body['viaje'];
+
+        // Actualizar los datos de la cotización
+        updateCot.cliente = request.input('cliente');
+        updateCot.viaje = request.input('viaje');
         updateCot.precio_total = precioTotal;
         await updateCot.save();
-  
-        response.status(200).json({
+
+        return response.status(200).json({
           type: "success",
-          title: "Updated successfully",
-          message: "the resource was updated",
+          title: "Actualizado exitosamente",
+          message: "El recurso ha sido actualizado",
           data: updateCot
         });
       } else {
-        response.status(404).json({ error: 'Viaje not found' });
+        return response.status(404).json({ error: 'Viaje no encontrado' });
       }
-    } else {
-      response.status(404).json({ error: 'Cotización not found' });
+    } catch (error) {
+      return response.status(500).json({
+        type: 'error',
+        title: 'Error al actualizar la cotización',
+        message: 'Ha ocurrido un error al intentar actualizar la cotización',
+        error: error.message,
+      });
     }
   }
   /**

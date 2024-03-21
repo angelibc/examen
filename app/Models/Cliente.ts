@@ -5,6 +5,9 @@ import { SoftDeletes } from '@ioc:Adonis/Addons/LucidSoftDeletes'
 
 
 export default class Cliente extends compose(BaseModel, SoftDeletes) {
+
+  public static table = 'clientes'
+
   @column({ isPrimary: true })
   public id: number
 
@@ -25,6 +28,9 @@ export default class Cliente extends compose(BaseModel, SoftDeletes) {
 
   @column()
   public fecha_nacimiento: Date
+
+  @column()
+  public codigo: string
 
   @column.dateTime({ autoCreate: true })
   public createdAt: DateTime
